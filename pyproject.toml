@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ftd"
+version = "1.0.0"
+authors = []
+description = "FTD"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "chardet",
+    "einops",
+    "imageio-ffmpeg",
+    "imageio",
+    "kornia",
+    "matplotlib",
+    "numpy",
+    "timm",
+    "pynvml",
+    "tensordict",
+    "segdac"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ftd/"]
