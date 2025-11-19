@@ -3,20 +3,23 @@ import torch
 import numpy as np
 from segdac.data.mdp import MdpData
 from segdac_dev.envs.transforms.transform import Transform
-from mobile_sam import sam_model_registry, SamAutomaticMaskGenerator
+from efficientvit.sam_model_zoo import create_efficientvit_sam_model
+from efficientvit.models.efficientvit.sam import EfficientViTSamAutomaticMaskGenerator
 
 
 class SamEnvTransform(Transform):
-    def __init__(self, device: str, in_key: str, out_key: str):
+    def __init__(self, device: str, in_key: str, out_key: str, segmenter_model_name: str = "efficientvit-sam-l0", segmenter_weights_path: str = "weights/efficientvit_sam_l0.pt"):
         super().__init__(device)
         self.in_key = in_key
         self.out_key = out_key
-        sam = sam_model_registry["vit_t"](
-            checkpoint="baselines/ftd/src/mobile_sam/weights/mobile_sam.pt"
-        ).to(device="cuda")
-        sam.eval()
-        self.mask_generator = SamAutomaticMaskGenerator(
-            sam,
+        self.segmenter_model = create_efficientvit_sam_model(
+            name=segmenter_model_name,
+            pretrained=True,
+            weight_url=segmenter_weights_path,
+        )
+        self.segmenter_model = self.segmenter_model.to(device).eval()
+        self.segments_predictor = EfficientViTSamAutomaticMaskGenerator(
+            model=self.segmenter_model,
             pred_iou_thresh=0.5,
             stability_score_thresh=0.5,
             points_per_side=8,
@@ -84,7 +87,7 @@ class SamEnvTransform(Transform):
 
     def _generate_image_mask(self, image, initial_flag=False, dtype=np.uint8):
         assert image.shape[-1] in [1, 3], "Image can only be gray or rgb"
-        masks = self.mask_generator.generate(image)
+        masks = self.segments_predictor.generate(image)
         masks = self.mask_filter(masks, image, initial_flag)
 
         if len(masks) == 0:
